@@ -1,412 +1,616 @@
 /* ============================================================
    Connect Four Arena — script.js
-   Clean, commented game logic. No external libraries.
    ============================================================ */
 
-// ── Constants ───────────────────────────────────────────────
 const ROWS = 6;
 const COLS = 7;
-const EMPTY  = null;
-const RED    = 'red';
-const YELLOW = 'yellow';
 
-const STORAGE_KEY = 'c4arena_scores';
-const HISTORY_KEY = 'c4arena_history';
+const RED = "red";
+const YELLOW = "yellow";
+const EMPTY = null;
 
-// ── State ────────────────────────────────────────────────────
-let playerNames = { red: 'Player 1', yellow: 'Player 2' };
-let scores      = { red: 0, yellow: 0 };
-let matchHistory = [];
-let board        = [];          // 2D array [row][col] = RED | YELLOW | null
+const SCORE_KEY = "connect_four_scores";
+const HISTORY_KEY = "connect_four_history";
+
+
+let board = [];
 let currentPlayer = RED;
-let gameOver      = false;
-let matchCount    = 0;          // total matches played this session
+let gameOver = false;
 
-// ── DOM refs ─────────────────────────────────────────────────
-const setupScreen    = document.getElementById('setup-screen');
-const gameScreen     = document.getElementById('game-screen');
-const boardEl        = document.getElementById('board');
-const colTargetsEl   = document.getElementById('col-targets');
-const turnDiscEl     = document.getElementById('turn-disc');
-const turnLabelEl    = document.getElementById('turn-label');
-const historyListEl  = document.getElementById('history-list');
-const resultOverlay  = document.getElementById('result-overlay');
-const resultIcon     = document.getElementById('result-icon');
-const resultTitle    = document.getElementById('result-title');
-const resultBody     = document.getElementById('result-body');
-const scoreValP1     = document.getElementById('score-val-p1');
-const scoreValP2     = document.getElementById('score-val-p2');
-const scoreNameP1    = document.getElementById('score-name-p1');
-const scoreNameP2    = document.getElementById('score-name-p2');
-const scoreCardP1    = document.getElementById('score-p1');
-const scoreCardP2    = document.getElementById('score-p2');
+let players = {
+    red: "Player 1",
+    yellow: "Player 2"
+};
 
-// ── Setup Screen ─────────────────────────────────────────────
-document.getElementById('start-btn').addEventListener('click', () => {
-  const n1 = document.getElementById('p1-name').value.trim() || 'Player 1';
-  const n2 = document.getElementById('p2-name').value.trim() || 'Player 2';
-  playerNames.red    = n1;
-  playerNames.yellow = n2;
+let scores = {
+    red: 0,
+    yellow: 0
+};
 
-  loadScores();
-  updateScoreDisplay();
-  loadHistory();
-  showScreen('game');
-  startNewGame();
-});
+let history = [];
 
-// Allow Enter key to start
-document.getElementById('p2-name').addEventListener('keydown', e => {
-  if (e.key === 'Enter') document.getElementById('start-btn').click();
-});
 
-// ── Screen Switcher ──────────────────────────────────────────
-function showScreen(name) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(name + '-screen').classList.add('active');
-}
+// DOM
+const setupScreen = document.getElementById("setup-screen");
+const gameScreen = document.getElementById("game-screen");
 
-// ── Header Buttons ───────────────────────────────────────────
-document.getElementById('new-game-btn').addEventListener('click', () => {
-  closeResult();
-  startNewGame();
-});
+const boardEl = document.getElementById("board");
+const colTargetsEl = document.getElementById("col-targets");
 
-document.getElementById('reset-scores-btn').addEventListener('click', () => {
-  scores = { red: 0, yellow: 0 };
-  saveScores();
-  updateScoreDisplay();
-});
+const turnDisc = document.getElementById("turn-disc");
+const turnLabel = document.getElementById("turn-label");
 
-// Result overlay buttons
-document.getElementById('play-again-btn').addEventListener('click', () => {
-  closeResult();
-  startNewGame();
-});
+const scoreNameP1 = document.getElementById("score-name-p1");
+const scoreNameP2 = document.getElementById("score-name-p2");
 
-document.getElementById('change-players-btn').addEventListener('click', () => {
-  closeResult();
-  showScreen('setup');
-});
+const scoreP1 = document.getElementById("score-val-p1");
+const scoreP2 = document.getElementById("score-val-p2");
 
-// ── LocalStorage ─────────────────────────────────────────────
-function saveScores() {
-  // Store scores keyed by player names so they persist across sessions
-  const data = { names: playerNames, scores };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
+const historyList = document.getElementById("history-list");
 
-function loadScores() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return;
-  try {
-    const data = JSON.parse(raw);
-    // Only restore if same player names
-    if (data.names.red === playerNames.red && data.names.yellow === playerNames.yellow) {
-      scores = data.scores;
-    }
-  } catch (e) {
-    // Corrupted data — ignore
-  }
-}
+const resultOverlay = document.getElementById("result-overlay");
+const resultTitle = document.getElementById("result-title");
+const resultBody = document.getElementById("result-body");
+const resultIcon = document.getElementById("result-icon");
 
-function saveHistory() {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(matchHistory));
-}
 
-function loadHistory() {
-  const raw = localStorage.getItem(HISTORY_KEY);
-  if (!raw) return;
-  try {
-    matchHistory = JSON.parse(raw);
-    renderHistory();
-  } catch (e) {
-    matchHistory = [];
-  }
-}
 
-// ── Score Display ─────────────────────────────────────────────
-function updateScoreDisplay() {
-  scoreNameP1.textContent = playerNames.red;
-  scoreNameP2.textContent = playerNames.yellow;
-  scoreValP1.textContent  = scores.red;
-  scoreValP2.textContent  = scores.yellow;
-}
+// START GAME
+document.getElementById("start-btn").onclick = () => {
 
-// Highlight the active player's score card
-function updateActiveCard() {
-  scoreCardP1.classList.toggle('active-card', currentPlayer === RED);
-  scoreCardP2.classList.toggle('active-card', currentPlayer === YELLOW);
-}
+    players.red =
+        document.getElementById("p1-name").value.trim()
+        || "Player 1";
 
-// ── Turn Indicator ────────────────────────────────────────────
-function updateTurnIndicator() {
-  turnDiscEl.className = 'turn-disc ' + currentPlayer;
-  turnLabelEl.textContent = playerNames[currentPlayer] + "'s turn";
-}
 
-// ── Game Init ─────────────────────────────────────────────────
-function startNewGame() {
-  // Reset board data
-  board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
-  currentPlayer = RED;  // Red always starts
-  gameOver = false;
+    players.yellow =
+        document.getElementById("p2-name").value.trim()
+        || "Player 2";
 
-  buildBoard();
-  buildColTargets();
-  updateTurnIndicator();
-  updateActiveCard();
-}
 
-// ── Build DOM Board ───────────────────────────────────────────
-function buildBoard() {
-  boardEl.innerHTML = '';
-  // Rows go top-to-bottom visually, but row 0 is the BOTTOM in our data array.
-  // We render visual row 0 (top) = data row (ROWS-1) so gravity works naturally.
-  for (let vRow = 0; vRow < ROWS; vRow++) {
-    for (let col = 0; col < COLS; col++) {
-      const cell = document.createElement('div');
-      cell.classList.add('cell');
-      cell.dataset.vrow = vRow;   // visual row (0 = top)
-      cell.dataset.col  = col;
-      boardEl.appendChild(cell);
-    }
-  }
-}
+    loadScores();
+    loadHistory();
 
-// Build invisible column click zones that span full column height
-function buildColTargets() {
-  colTargetsEl.innerHTML = '';
-  for (let col = 0; col < COLS; col++) {
-    const div = document.createElement('div');
-    div.classList.add('col-target');
-    div.dataset.col = col;
+    setupScreen.classList.remove("active");
+    gameScreen.classList.add("active");
 
-    // Click — drop a disc
-    div.addEventListener('click', () => handleColumnClick(col));
+    updateScore();
 
-    // Hover — show preview in top cell of column
-    div.addEventListener('mouseenter', () => showPreview(col));
-    div.addEventListener('mouseleave', clearPreview);
+    newGame();
+};
 
-    colTargetsEl.appendChild(div);
-  }
-}
 
-// ── Column Click ──────────────────────────────────────────────
-function handleColumnClick(col) {
-  if (gameOver) return;
 
-  // Find the lowest empty row in this column
-  const row = getAvailableRow(col);
-  if (row === -1) return;  // Column full
+// NEW GAME BUTTON
+document.getElementById("new-game-btn").onclick = () => {
 
-  clearPreview();
+    closePopup();
 
-  // Place disc in data board
-  board[row][col] = currentPlayer;
+    newGame();
 
-  // Animate and render disc
-  renderDisc(row, col, currentPlayer, true);
+};
 
-  // Check for win or draw
-  const winCells = checkWin(row, col, currentPlayer);
-  if (winCells) {
-    handleWin(winCells);
-    return;
-  }
 
-  if (checkDraw()) {
-    handleDraw();
-    return;
-  }
 
-  // Switch player
-  currentPlayer = currentPlayer === RED ? YELLOW : RED;
-  updateTurnIndicator();
-  updateActiveCard();
-}
+// RESET SCORE BUTTON
+document.getElementById("reset-scores-btn").onclick = () => {
 
-// Returns the lowest available row index for a column (-1 if full).
-// Row 0 is the BOTTOM of our data array (gravity fills from bottom).
-function getAvailableRow(col) {
-  for (let row = 0; row < ROWS; row++) {
-    if (board[row][col] === EMPTY) return row;
-  }
-  return -1;
-}
 
-// ── Render a Disc ─────────────────────────────────────────────
-// Data row 0 = visual bottom row (vRow = ROWS - 1)
-function dataRowToVisual(row) {
-  return ROWS - 1 - row;
-}
+    scores = {
+        red:0,
+        yellow:0
+    };
 
-function getCellEl(dataRow, col) {
-  const vRow = dataRowToVisual(dataRow);
-  return boardEl.querySelector(`.cell[data-vrow="${vRow}"][data-col="${col}"]`);
-}
 
-function renderDisc(dataRow, col, color, animate) {
-  const cell = getCellEl(dataRow, col);
-  if (!cell) return;
-  cell.className = 'cell ' + color;  // set color class
-  if (animate) {
-    cell.classList.add('dropping');
-    cell.addEventListener('animationend', () => cell.classList.remove('dropping'), { once: true });
-  }
-}
+    localStorage.removeItem(SCORE_KEY);
 
-// ── Column Preview (hover effect) ────────────────────────────
-function showPreview(col) {
-  if (gameOver) return;
-  const row = getAvailableRow(col);
-  if (row === -1) return;  // Full column — no preview
+    updateScore();
 
-  // Show a dim disc in the topmost filled position for this column
-  const topVisualRow = dataRowToVisual(row);
-  const cell = boardEl.querySelector(`.cell[data-vrow="${topVisualRow}"][data-col="${col}"]`);
-  if (cell && !cell.classList.contains(RED) && !cell.classList.contains(YELLOW)) {
-    cell.classList.add('preview', currentPlayer);
-  }
-}
+};
 
-function clearPreview() {
-  boardEl.querySelectorAll('.preview').forEach(c => {
-    c.classList.remove('preview', RED, YELLOW);
-  });
-}
 
-// ── Win Detection ─────────────────────────────────────────────
-// Returns array of {row, col} winning cells, or null if no win.
-function checkWin(lastRow, lastCol, color) {
-  const directions = [
-    [0, 1],   // horizontal
-    [1, 0],   // vertical
-    [1, 1],   // diagonal ↘
-    [1, -1],  // diagonal ↙
-  ];
 
-  for (const [dr, dc] of directions) {
-    // Collect all consecutive cells of this color in both directions
-    const line = [{ row: lastRow, col: lastCol }];
+// PLAY AGAIN
+document.getElementById("play-again-btn").onclick = () => {
 
-    for (const sign of [1, -1]) {
-      let r = lastRow + dr * sign;
-      let c = lastCol + dc * sign;
-      while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === color) {
-        line.push({ row: r, col: c });
-        r += dr * sign;
-        c += dc * sign;
-      }
+    closePopup();
+
+    newGame();
+
+};
+
+
+
+// CHANGE PLAYERS
+document.getElementById("change-players-btn").onclick = () => {
+
+    closePopup();
+
+    gameScreen.classList.remove("active");
+    setupScreen.classList.add("active");
+
+};
+
+
+
+
+// CREATE BOARD
+function newGame(){
+
+    board = [];
+
+    for(let r=0;r<ROWS;r++){
+
+        board.push(
+            Array(COLS).fill(EMPTY)
+        );
+
     }
 
-    if (line.length >= 4) return line.slice(0, 4);  // Return exactly 4 winning cells
-  }
 
-  return null;  // No win
+    currentPlayer = RED;
+    gameOver=false;
+
+
+    createBoard();
+    createColumns();
+
+    updateTurn();
+
 }
 
-// Returns true if all cells are filled (draw)
-function checkDraw() {
-  return board[ROWS - 1].every(cell => cell !== EMPTY);  // Top row is full
+
+
+
+
+// DRAW BOARD
+function createBoard(){
+
+    boardEl.innerHTML="";
+
+
+    for(let r=ROWS-1;r>=0;r--){
+
+        for(let c=0;c<COLS;c++){
+
+
+            let cell=document.createElement("div");
+
+            cell.className="cell";
+
+            cell.dataset.row=r;
+            cell.dataset.col=c;
+
+
+            boardEl.appendChild(cell);
+
+        }
+
+    }
+
 }
 
-// ── Handle Win ────────────────────────────────────────────────
-function handleWin(winCells) {
-  gameOver = true;
 
-  // Highlight the 4 winning cells
-  winCells.forEach(({ row, col }) => {
-    const cell = getCellEl(row, col);
-    if (cell) cell.classList.add('win');
-  });
 
-  // Update score
-  scores[currentPlayer]++;
-  saveScores();
-  updateScoreDisplay();
 
-  // Log match
-  addMatchToHistory(currentPlayer, false);
+// CLICK COLUMNS
+function createColumns(){
 
-  // Show popup after brief pause (let animation play)
-  setTimeout(() => {
-    showResult(
-      '🏆',
-      playerNames[currentPlayer] + ' wins!',
-      `Dropped the winning disc. ${playerNames[currentPlayer]} takes the round.`
+    colTargetsEl.innerHTML="";
+
+
+    for(let c=0;c<COLS;c++){
+
+
+        let col=document.createElement("div");
+
+        col.className="col-target";
+
+
+        col.onclick=()=>{
+
+            dropDisc(c);
+
+        };
+
+
+        colTargetsEl.appendChild(col);
+
+    }
+
+}
+
+
+
+
+// DROP DISC
+function dropDisc(col){
+
+
+    if(gameOver)
+        return;
+
+
+
+    let row=-1;
+
+
+    for(let r=0;r<ROWS;r++){
+
+
+        if(board[r][col]===EMPTY){
+
+            row=r;
+            break;
+
+        }
+
+    }
+
+
+    if(row===-1)
+        return;
+
+
+
+    board[row][col]=currentPlayer;
+
+
+
+    render();
+
+
+
+    if(checkWinner(row,col,currentPlayer)){
+
+
+        scores[currentPlayer]++;
+
+        saveScores();
+
+        updateScore();
+
+
+        addHistory(currentPlayer);
+
+
+        showResult(
+            "🏆",
+            players[currentPlayer]+" wins!",
+            "Congratulations!"
+        );
+
+
+        gameOver=true;
+
+        return;
+
+    }
+
+
+
+    if(isDraw()){
+
+
+        showResult(
+            "🤝",
+            "Draw Game",
+            "No more moves available"
+        );
+
+
+        gameOver=true;
+
+        return;
+
+    }
+
+
+
+    currentPlayer =
+        currentPlayer===RED
+        ? YELLOW
+        : RED;
+
+
+
+    updateTurn();
+
+
+}
+
+
+
+
+// DISPLAY BOARD
+function render(){
+
+
+    document.querySelectorAll(".cell")
+    .forEach(cell=>{
+
+
+        cell.className="cell";
+
+
+        let r=cell.dataset.row;
+        let c=cell.dataset.col;
+
+
+        if(board[r][c]){
+
+            cell.classList.add(board[r][c]);
+
+        }
+
+
+    });
+
+
+}
+
+
+
+
+
+// WIN CHECK
+function checkWinner(r,c,color){
+
+
+    const directions=[
+
+        [1,0],
+        [0,1],
+        [1,1],
+        [1,-1]
+
+    ];
+
+
+    for(let d of directions){
+
+
+        let count=1;
+
+
+        count += countDirection(r,c,d[0],d[1],color);
+
+        count += countDirection(r,c,-d[0],-d[1],color);
+
+
+
+        if(count>=4)
+            return true;
+
+
+    }
+
+
+    return false;
+
+}
+
+
+
+
+function countDirection(r,c,dr,dc,color){
+
+
+    let count=0;
+
+
+    r+=dr;
+    c+=dc;
+
+
+
+    while(
+
+        r>=0 &&
+        r<ROWS &&
+        c>=0 &&
+        c<COLS &&
+        board[r][c]===color
+
+    ){
+
+        count++;
+
+        r+=dr;
+        c+=dc;
+
+    }
+
+
+    return count;
+
+}
+
+
+
+
+function isDraw(){
+
+
+    return board[ROWS-1]
+    .every(cell=>cell!==EMPTY);
+
+
+}
+
+
+
+
+// TURN
+function updateTurn(){
+
+
+    turnDisc.className =
+    "turn-disc "+currentPlayer;
+
+
+    turnLabel.innerText =
+    players[currentPlayer]+" 's turn";
+
+
+}
+
+
+
+
+// SCORE
+function updateScore(){
+
+
+    scoreNameP1.innerText=players.red;
+    scoreNameP2.innerText=players.yellow;
+
+
+    scoreP1.innerText=scores.red;
+    scoreP2.innerText=scores.yellow;
+
+
+}
+
+
+
+
+
+// POPUP
+function showResult(icon,title,body){
+
+
+    resultIcon.innerText=icon;
+
+    resultTitle.innerText=title;
+
+    resultBody.innerText=body;
+
+
+    resultOverlay.classList.remove("hidden");
+
+
+}
+
+
+
+function closePopup(){
+
+    resultOverlay.classList.add("hidden");
+
+}
+
+
+
+
+
+// STORAGE
+
+function saveScores(){
+
+    localStorage.setItem(
+        SCORE_KEY,
+        JSON.stringify(scores)
     );
-  }, 600);
+
 }
 
-// ── Handle Draw ───────────────────────────────────────────────
-function handleDraw() {
-  gameOver = true;
-  addMatchToHistory(null, true);
-  setTimeout(() => {
-    showResult('🤝', "It's a draw!", 'All 42 discs placed. No winner this round.');
-  }, 400);
+
+
+function loadScores(){
+
+
+    let data=
+    localStorage.getItem(SCORE_KEY);
+
+
+    if(data){
+
+        scores=JSON.parse(data);
+
+    }
+
 }
 
-// ── Result Popup ──────────────────────────────────────────────
-function showResult(icon, title, body) {
-  resultIcon.textContent   = icon;
-  resultTitle.textContent  = title;
-  resultBody.textContent   = body;
-  resultOverlay.classList.remove('hidden');
+
+
+
+// HISTORY
+
+function addHistory(winner){
+
+
+    history.unshift({
+
+        name:players[winner],
+
+        time:new Date()
+        .toLocaleTimeString()
+
+    });
+
+
+
+    localStorage.setItem(
+        HISTORY_KEY,
+        JSON.stringify(history)
+    );
+
+
+    showHistory();
+
 }
 
-function closeResult() {
-  resultOverlay.classList.add('hidden');
+
+
+function loadHistory(){
+
+    let data =
+    localStorage.getItem(HISTORY_KEY);
+
+
+    if(data){
+
+        history=JSON.parse(data);
+
+    }
+
+
+    showHistory();
+
 }
 
-// ── Match History ─────────────────────────────────────────────
-function addMatchToHistory(winner, isDraw) {
-  matchCount++;
-  const now = new Date();
-  const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  matchHistory.unshift({
-    num:    matchCount,
-    winner: isDraw ? null : winner,
-    name:   isDraw ? 'Draw' : playerNames[winner],
-    time,
-  });
 
-  // Keep only last 20 entries
-  if (matchHistory.length > 20) matchHistory.pop();
 
-  saveHistory();
-  renderHistory();
+function showHistory(){
+
+
+    historyList.innerHTML="";
+
+
+    history.forEach((item,index)=>{
+
+
+        let li=document.createElement("li");
+
+
+        li.className="history-item";
+
+
+        li.innerHTML=
+
+        `
+        #${index+1}
+        🏆 ${item.name}
+        <span>${item.time}</span>
+        `;
+
+
+        historyList.appendChild(li);
+
+
+    });
+
+
 }
-
-function renderHistory() {
-  historyListEl.innerHTML = '';
-
-  if (matchHistory.length === 0) {
-    historyListEl.innerHTML = '<li class="history-empty">No matches played yet.</li>';
-    return;
-  }
-
-  matchHistory.forEach((entry, i) => {
-    const li = document.createElement('li');
-    li.className = 'history-item';
-
-    const colorClass = entry.winner ? entry.winner : 'draw';
-    const label      = entry.winner ? `${entry.name} wins` : 'Draw';
-    const badge      = entry.winner ? (entry.winner === RED ? '🔴' : '🟡') : '🤝';
-
-    li.innerHTML = `
-      <span class="match-num">#${entry.num}</span>
-      <span class="match-winner ${colorClass}">${badge} ${label}</span>
-      <span class="match-time">${entry.time}</span>
-    `;
-
-    historyListEl.appendChild(li);
-  });
-}
-
-// ── Boot ──────────────────────────────────────────────────────
-// Focus first input on load
-document.getElementById('p1-name').focus();
