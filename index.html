@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connect Four Arena</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── NAME ENTRY SCREEN ── -->
+  <div id="setup-screen" class="screen active">
+    <div class="setup-card">
+      <div class="logo-mark">⬡</div>
+      <h1>Connect Four<br /><span>Arena</span></h1>
+      <p class="tagline">Drop. Connect. Dominate.</p>
+
+      <div class="player-inputs">
+        <div class="input-group">
+          <div class="swatch red"></div>
+          <input id="p1-name" type="text" maxlength="16" placeholder="Red player name" autocomplete="off" />
+        </div>
+        <div class="input-group">
+          <div class="swatch yellow"></div>
+          <input id="p2-name" type="text" maxlength="16" placeholder="Yellow player name" autocomplete="off" />
+        </div>
+      </div>
+
+      <button id="start-btn" class="btn btn-primary">Start Match</button>
+    </div>
+  </div>
+
+  <!-- ── GAME SCREEN ── -->
+  <div id="game-screen" class="screen">
+
+    <!-- Header -->
+    <header class="game-header">
+      <div class="header-logo">⬡ Connect Four Arena</div>
+      <div class="header-actions">
+        <button id="new-game-btn" class="btn btn-ghost">New Game</button>
+        <button id="reset-scores-btn" class="btn btn-ghost">Reset Scores</button>
+      </div>
+    </header>
+
+    <main class="game-layout">
+
+      <!-- Score Panel -->
+      <section class="score-panel">
+        <div class="score-card red-card" id="score-p1">
+          <div class="score-disc red"></div>
+          <div class="score-info">
+            <span class="score-name" id="score-name-p1">Player 1</span>
+            <span class="score-val" id="score-val-p1">0</span>
+          </div>
+        </div>
+        <div class="vs-badge">VS</div>
+        <div class="score-card yellow-card" id="score-p2">
+          <div class="score-disc yellow"></div>
+          <div class="score-info">
+            <span class="score-name" id="score-name-p2">Player 2</span>
+            <span class="score-val" id="score-val-p2">0</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Turn Indicator -->
+      <div class="turn-indicator">
+        <div class="turn-disc" id="turn-disc"></div>
+        <span id="turn-label">— 's turn</span>
+      </div>
+
+      <!-- Board -->
+      <div class="board-wrapper">
+        <!-- Column hover targets (invisible click zones) -->
+        <div class="col-targets" id="col-targets"></div>
+        <!-- The visual board grid -->
+        <div class="board" id="board"></div>
+      </div>
+
+      <!-- Match History -->
+      <section class="history-panel">
+        <h2 class="history-title">Match History</h2>
+        <ul id="history-list" class="history-list">
+          <li class="history-empty">No matches played yet.</li>
+        </ul>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ── WIN / DRAW POPUP ── -->
+  <div id="result-overlay" class="overlay hidden">
+    <div class="result-card">
+      <div class="result-icon" id="result-icon">🏆</div>
+      <h2 id="result-title">Winner!</h2>
+      <p id="result-body">Player wins the match.</p>
+      <div class="result-actions">
+        <button id="play-again-btn" class="btn btn-primary">Play Again</button>
+        <button id="change-players-btn" class="btn btn-ghost">Change Players</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
