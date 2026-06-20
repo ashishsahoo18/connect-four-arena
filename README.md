@@ -89,20 +89,6 @@ No build tools, no npm install, no server required.
 4. If all 42 cells fill without a winner, the match is a draw.
 5. Scores persist across browser sessions when the same player names are used.
 
----
-
-## Screenshots
-
-> _Add screenshots here after launching the project._
-
-| Setup Screen | Game Board | Win State |
-|---|---|---|
-| _(screenshot)_ | _(screenshot)_ | _(screenshot)_ |
-
-To take screenshots: open `index.html` in your browser, press `F12 → ...menu → Screenshot` (Chrome DevTools), or use your OS screenshot tool.
-
----
-
 ## Local Storage Behaviour
 
 - **Scores** are saved under key `c4arena_scores` and restored when the same two player names are entered.
@@ -121,7 +107,3 @@ To take screenshots: open `index.html` in your browser, press `F12 → ...menu �
 - Move undo / replay
 
 ---
-
-## License
-
-MIT — free to use, modify, and share.
